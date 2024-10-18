@@ -1,0 +1,65 @@
+- name: PostgreSQL Primary-Replica Setup
+  hosts: all
+  become: yes
+  vars:
+    postgres_version: 13
+    max_connections: 100
+    shared_buffers: 256MB
+
+  tasks:
+    - name: Install PostgreSQL
+      apt:
+        name: "postgresql-{{ postgres_version }}"
+        state: present
+        update_cache: yes
+
+    - name: Ensure PostgreSQL is started
+      service:
+        name: postgresql
+        state: started
+        enabled: yes
+
+    - name: Configure PostgreSQL settings
+      copy:
+        dest: /etc/postgresql/{{ postgres_version }}/main/postgresql.conf
+        content: |
+          max_connections = {{ max_connections }}
+          shared_buffers = {{ shared_buffers }}
+          wal_level = replica
+          hot_standby = on
+
+    - name: Restart PostgreSQL to apply changes
+      service:
+        name: postgresql
+        state: restarted
+
+    - name: Configure replication (Primary)
+      when: "'primary' in group_names"
+      block:
+        - name: Add replica user
+          become_user: postgres
+          shell: |
+            psql -c "CREATE USER replica REPLICATION LOGIN ENCRYPTED PASSWORD 'replica_password';"
+
+        - name: Allow replication connections
+          lineinfile:
+            path: /etc/postgresql/{{ postgres_version }}/main/pg_hba.conf
+            line: "host replication replica 0.0.0.0/0 md5"
+
+    - name: Configure replica setup (Replica)
+      when: "'replicas' in group_names"
+      block:
+        - name: Stop PostgreSQL service on replica
+          service:
+            name: postgresql
+            state: stopped
+
+        - name: Clone data from primary
+          become_user: postgres
+          shell: |
+            pg_basebackup -h {{ hostvars['primary'].ansible_host }} -D /var/lib/postgresql/{{ postgres_version }}/main/ -U replica -v -P
+
+        - name: Start PostgreSQL on replica
+          service:
+            name: postgresql
+            state: started
