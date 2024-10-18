@@ -1,9 +1,3 @@
-Here is a detailed **README.md** to document your project, covering the setup, usage, error handling, assumptions, and future use cases.
-
----
-
-## **README.md**  
-
 # PostgreSQL Primary-Replica Setup Automation API  
 
 ## **Overview**  
@@ -210,6 +204,3 @@ curl -X POST http://<your-server-ip>:8000/configure-postgres/
 ## **Conclusion**  
 This project provides a flexible and automated way to set up a PostgreSQL primary-read-replica architecture using Terraform and Ansible. With configurable parameters and modular code, it is easy to extend and maintain for future use cases.
 
----
-
-Let me know if you need further customization or clarification!
